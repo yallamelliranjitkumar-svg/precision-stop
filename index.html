@@ -1,0 +1,227 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, user-scalable=no">
+<meta name="theme-color" content="#0E1A2B">
+<title>Precision Stop</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bungee&family=JetBrains+Mono:wght@500;700&display=swap">
+<style>
+/* Layout: one centered column on a dark stage — bar with needle, a one-line result, one big button */
+:root{
+  --ink:#0E1A2B; --track:#08111E; --line:#24395A; --fg:#EEF2F8; --muted:#7F92AD;
+  --brass:#F0B845; --brass-ink:#2A1C00;
+  --win:#34D27F; --near:#FFAE1F; --miss:#FF5C61;
+  --f-display:"Bungee","Arial Black",Impact,sans-serif;
+  --f-mono:"JetBrains Mono",ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;
+  color-scheme:dark;
+}
+*{box-sizing:border-box}
+html,body{height:100%;margin:0}
+:root{padding-block:env(safe-area-inset-top,0px) env(safe-area-inset-bottom,0px)}
+body{background:var(--ink);color:var(--fg);font-family:var(--f-mono);
+  -webkit-tap-highlight-color:transparent;touch-action:manipulation;user-select:none;-webkit-user-select:none;overflow:hidden}
+
+.stage{height:100%;display:flex;flex-direction:column;align-items:center;justify-content:center;
+  gap:clamp(36px,8vh,72px);padding-inline:20px;padding-block:24px}
+
+.bar{position:relative;width:min(760px,100%);touch-action:manipulation;cursor:pointer}
+.track{position:relative;height:clamp(56px,10vw,80px);background:var(--track);border:1px solid var(--line);border-radius:14px}
+.zone{position:absolute;top:0;bottom:0;background:var(--win);border-radius:3px}
+.needle{position:absolute;left:0;top:-14px;bottom:-14px;width:4px;margin-left:-2px;background:var(--fg);border-radius:2px;will-change:transform;
+  box-shadow:0 0 0 1px var(--track),0 0 14px rgba(255,255,255,.35)}
+.marks{position:absolute;left:0;right:0;bottom:-30px;height:12px;pointer-events:none}
+.mark{position:absolute;top:0;width:8px;height:8px;margin-left:-4px;border-radius:50%;opacity:.55}
+.mark:first-child{width:12px;height:12px;margin-left:-6px;margin-top:-2px;opacity:1}
+.mark.win{background:var(--win)} .mark.near{background:var(--near)} .mark.miss{background:var(--miss)}
+
+.result{height:1.2em;font-size:clamp(18px,3.6vw,26px);font-weight:700;font-variant-numeric:tabular-nums;text-align:center;color:var(--muted);white-space:nowrap}
+.result b{font-family:var(--f-display);font-weight:400;margin-right:.5em}
+.result.win b{color:var(--win)} .result.near b{color:var(--near)} .result.miss b{color:var(--miss)}
+.result.pop{animation:pop .35s cubic-bezier(.2,1.6,.4,1)}
+@keyframes pop{from{transform:scale(.75);opacity:.2}to{transform:none;opacity:1}}
+
+.chances{display:flex;gap:10px;margin-block:calc(-1 * clamp(18px,5vh,44px))}
+.chances span{width:12px;height:12px;border-radius:50%;background:var(--fg);transition:background .2s,transform .2s}
+.chances span.used{background:transparent;box-shadow:inset 0 0 0 2px var(--line)}
+.chances span.used.win{background:var(--win);box-shadow:none} .chances span.used.near{background:var(--near);box-shadow:none} .chances span.used.miss{background:var(--miss);box-shadow:none}
+.btn.over{background:var(--line);color:var(--muted);box-shadow:0 8px 0 color-mix(in srgb,var(--line) 55%,black);font-size:clamp(20px,4vw,26px);line-height:1.1;cursor:default}
+
+.btn{width:clamp(150px,34vw,200px);aspect-ratio:1;max-width:100%;border:0;border-radius:50%;background:var(--brass);color:var(--brass-ink);
+  font-family:var(--f-display);font-size:clamp(26px,5vw,34px);cursor:pointer;touch-action:manipulation;
+  box-shadow:0 8px 0 color-mix(in srgb,var(--brass) 55%,black);transition:transform .05s,box-shadow .05s}
+.btn.running{background:var(--fg);color:var(--ink);box-shadow:0 8px 0 color-mix(in srgb,var(--fg) 45%,black)}
+.btn.pressed{transform:translateY(6px);box-shadow:0 2px 0 color-mix(in srgb,var(--brass) 55%,black)}
+.btn:focus-visible{outline:3px solid var(--brass);outline-offset:6px}
+
+.toast{position:fixed;left:50%;bottom:calc(20px + env(safe-area-inset-bottom,0px));transform:translateX(-50%);
+  background:var(--near);color:var(--brass-ink);font-family:var(--f-display);font-size:16px;padding:10px 18px;border-radius:999px;
+  white-space:nowrap;max-width:calc(100% - 32px);overflow:hidden;text-overflow:ellipsis}
+
+@media (prefers-reduced-motion:reduce){.result.pop{animation:none}.zone{transition:none}}
+</style>
+</head>
+<body>
+
+<main class="stage">
+  <div class="bar" id="bar" aria-hidden="true">
+    <div class="track" id="track">
+      <div class="zone" id="zone"></div>
+      <div class="needle" id="needle"></div>
+    </div>
+    <div class="marks" id="marks"></div>
+  </div>
+
+  <div class="result" id="result" aria-live="polite"></div>
+
+  <div class="chances" id="chances" aria-label="3 chances left"><span></span><span></span><span></span></div>
+
+  <button type="button" class="btn" id="btn">START</button>
+  <div class="toast" id="toast" hidden></div>
+</main>
+
+<script>
+(() => {
+  const WIDTH = 6, SPEED = 130, NEAR = 10;   // zone width (units of 100), needle speed (units/s), near-miss band (10% of bar)
+  const $ = id => document.getElementById(id);
+  const r1 = n => Math.round(n * 10) / 10;
+  const f1 = n => r1(n).toFixed(1);
+  const track = $('track'), needle = $('needle'), btn = $('btn'), result = $('result');
+
+  const CHANCES = 3;
+  const S = { phase:'idle', zone:47, t0:0, pos:0, lockUntil:0, history:[], streak:0, used:0 };
+  let trackW = track.clientWidth;
+
+  /* sound + haptics (start only after a tap) */
+  let ac = null;
+  function tone(f, at, dur, type='triangle', vol=.15){
+    try {
+      ac = ac || new (window.AudioContext || window.webkitAudioContext)(); if (ac.state === 'suspended') ac.resume();
+      const o = ac.createOscillator(), g = ac.createGain(), t = ac.currentTime + at;
+      o.type = type; o.frequency.value = f;
+      g.gain.setValueAtTime(0, t); g.gain.linearRampToValueAtTime(vol, t + .01); g.gain.exponentialRampToValueAtTime(.0001, t + dur);
+      o.connect(g).connect(ac.destination); o.start(t); o.stop(t + dur + .02);
+    } catch(e){}
+  }
+  const buzz = p => { try { navigator.vibrate && navigator.vibrate(p); } catch(e){} };
+
+  function placeNeedle(p){ needle.style.transform = `translateX(${p / 100 * trackW}px)`; }
+  function drawZone(){ $('zone').style.left = S.zone + '%'; $('zone').style.width = WIDTH + '%'; }
+  function drawMarks(){ $('marks').innerHTML = S.history.map(h => `<span class="mark ${h.r}" style="left:${h.p}%"></span>`).join(''); }
+
+  function posAt(t){ const d = Math.max(0, t - S.t0) / 1000 * SPEED, m = d % 200; return m <= 100 ? m : 200 - m; }
+  // Zone speed per chance, as a fraction of the needle speed: 1st static, 2nd 0.25×, 3rd 0.5×
+  const ZONE_SPEED = [0, 0.25, 0.5];
+  // The zone bounces between 0 and 100 − WIDTH, starting from zone0 and moving left (toward the needle)
+  function zoneAt(t){
+    if (!S.zoneSpeed) return S.zone0;
+    const R = 100 - WIDTH, d = Math.max(0, t - S.t0) / 1000 * S.zoneSpeed;
+    const u = (2 * R - S.zone0 + d) % (2 * R);
+    return u <= R ? u : 2 * R - u;
+  }
+  function frame(now){
+    if (S.phase !== 'running') return;
+    S.pos = posAt(now); placeNeedle(S.pos);
+    if (S.zoneSpeed) { S.zone = zoneAt(now); drawZone(); }
+    requestAnimationFrame(frame);
+  }
+
+  function start(now){
+    S.phase = 'running'; S.t0 = now; S.pos = 0;
+    S.zone0 = S.zone = r1(15 + Math.random() * (70 - WIDTH));
+    S.zoneSpeed = SPEED * ZONE_SPEED[S.used];
+    drawZone(); placeNeedle(0);
+    result.className = 'result'; result.textContent = '';
+    btn.textContent = 'STOP'; btn.classList.add('running');
+    tone(440, 0, .07, 'square', .05);
+    requestAnimationFrame(frame);
+  }
+
+  function stop(at){
+    S.zone = r1(zoneAt(at)); drawZone();
+    const p = r1(posAt(at)), a = S.zone, b = r1(a + WIDTH);
+    S.phase = 'idle'; S.pos = p; S.lockUntil = performance.now() + 350; placeNeedle(p);
+    const dist = r1(p < a ? a - p : p > b ? p - b : 0);
+    const r = dist === 0 ? 'win' : dist <= NEAR ? 'near' : 'miss';
+
+    S.history.unshift({ p, r }); S.history = S.history.slice(0, 3); drawMarks();
+
+    if (r === 'win') {
+      S.streak = 0;
+      result.innerHTML = `<b>WIN!</b>${f1(p)}`;
+      [523, 659, 784, 1047].forEach((f, i) => tone(f, i * .08, .2)); buzz([30, 40, 60]);
+    } else if (r === 'near') {
+      S.streak++;
+      result.innerHTML = `<b>SO CLOSE!</b>off by ${f1(dist)}`;
+      tone(620, 0, .12); tone(560, .12, .22); buzz([50, 40, 50]);
+      if (S.streak >= 3) { S.streak = 0; toast('Sticker token earned!'); }
+    } else {
+      S.streak = 0;
+      result.innerHTML = `<b>MISS</b>off by ${f1(dist)}`;
+      tone(180, 0, .25, 'sawtooth', .07); buzz(25);
+    }
+    result.className = 'result ' + r; void result.offsetWidth; result.classList.add('pop');
+    btn.classList.remove('running');
+
+    S.used++; drawChances();
+    if (S.used >= CHANCES) {
+      // out of chances: show the final result briefly, then start a fresh game
+      S.phase = 'over'; S.lockUntil = Infinity;
+      btn.innerHTML = 'GAME<br>OVER'; btn.classList.add('over');
+      setTimeout(newGame, 2500);
+    } else {
+      btn.textContent = 'START';
+    }
+  }
+
+  function drawChances(){
+    const dots = document.querySelectorAll('#chances span');
+    const used = S.history.slice(0, S.used).reverse();
+    dots.forEach((d, i) => { d.className = i < S.used ? 'used ' + used[i].r : ''; });
+    $('chances').setAttribute('aria-label', `${CHANCES - S.used} of ${CHANCES} chances left`);
+  }
+
+  function newGame(){
+    Object.assign(S, { phase:'idle', used:0, history:[], streak:0, pos:0, lockUntil: performance.now() + 200 });
+    drawMarks(); drawChances(); placeNeedle(0);
+    result.className = 'result'; result.textContent = 'New game · 3 chances';
+    btn.textContent = 'START'; btn.classList.remove('over');
+  }
+
+  let toastTimer = 0;
+  function toast(msg){
+    const t = $('toast'); t.textContent = msg; t.hidden = false;
+    clearTimeout(toastTimer); toastTimer = setTimeout(() => t.hidden = true, 2500);
+    [784, 988, 1175, 1568].forEach((f, i) => tone(f, .35 + i * .07, .18, 'sine'));
+  }
+
+  /* input: pointerdown for zero delay; stop time taken from the tap itself */
+  function tapTime(e){ const now = performance.now(); return e && e.timeStamp && Math.abs(now - e.timeStamp) < 1000 ? e.timeStamp : now; }
+  function act(e){
+    if (S.phase === 'running') stop(tapTime(e));
+    else if (performance.now() >= S.lockUntil) start(performance.now());
+  }
+  function press(e){
+    if (e.button !== undefined && e.button !== 0) return;
+    e.preventDefault(); act(e);
+    btn.classList.add('pressed'); setTimeout(() => btn.classList.remove('pressed'), 80);
+  }
+  btn.addEventListener('pointerdown', press);
+  $('bar').addEventListener('pointerdown', press);
+  let lastKey = 0;
+  btn.addEventListener('click', e => { if (e.detail === 0 && performance.now() - lastKey > 400) act(e); });
+  document.addEventListener('keydown', e => {
+    if (e.key !== ' ' && e.key !== 'Enter') return;
+    e.preventDefault(); if (e.repeat) return;
+    lastKey = performance.now(); act(e);
+  });
+
+  new ResizeObserver(() => { trackW = track.clientWidth; placeNeedle(S.pos); }).observe(track);
+  drawZone(); placeNeedle(0);
+})();
+</script>
+
+</body>
+</html>
