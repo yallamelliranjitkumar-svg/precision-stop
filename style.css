@@ -23,7 +23,7 @@
   --gutter: clamp(16px, 4vw, 32px);
   --gap: clamp(12px, 3.6vh, 40px);
   --btn-size: clamp(92px, min(32vw, 24vh), 190px);
-  --track-h: clamp(46px, min(10vw, 9vh), 84px);
+  --track-h: clamp(60px, min(11vw, 15vh), 96px);
   --ease-out: cubic-bezier(.2, .9, .3, 1);
   --ease-pop: cubic-bezier(.2, 1.6, .4, 1);
   color-scheme: dark;
@@ -367,17 +367,6 @@ button:focus-visible { outline: 2px solid var(--fg); outline-offset: 4px; }
 
 /* ---------- effects ---------- */
 .fx { position: absolute; inset: 0; width: 100%; height: 100%; pointer-events: none; z-index: 4; }
-.toast {
-  position: absolute; left: 50%; bottom: calc(20px + env(safe-area-inset-bottom, 0px)); z-index: 6;
-  transform: translateX(-50%);
-  max-width: calc(100% - 32px);
-  padding: 12px 20px; border-radius: 999px;
-  background: var(--near); color: var(--brass-ink);
-  font-family: var(--f-display); font-size: 14px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
-  box-shadow: 0 16px 40px -10px rgba(0,0,0,.6);
-  animation: toastIn .45s var(--ease-pop);
-}
-@keyframes toastIn { from { opacity: 0; transform: translate(-50%, 16px) scale(.9); } to { opacity: 1; transform: translateX(-50%); } }
 
 .noscript { position: fixed; inset: auto 16px 16px; text-align: center; color: var(--fg); }
 
@@ -397,13 +386,19 @@ button:focus-visible { outline: 2px solid var(--fg); outline-offset: 4px; }
   .icon-btn { width: 32px; height: 32px; }
   .chips { gap: 5px; }
 }
+/* phones: a thicker bar that runs almost edge to edge */
+@media (max-width: 600px) {
+  :root { --track-h: clamp(68px, 10vh, 88px); }
+  .bar { width: calc(100% + var(--gutter)); margin-inline: calc(var(--gutter) / -2); }
+  .track { border-radius: 14px; }
+}
 /* short screens: laptops with small windows, landscape phones */
 @media (max-height: 700px) {
   .demo, .rules { display: none; }
   .hint { display: none; }
 }
 @media (max-height: 520px) {
-  :root { --gap: 10px; --btn-size: clamp(80px, 26vh, 120px); --track-h: clamp(40px, 12vh, 56px); }
+  :root { --gap: 10px; --btn-size: clamp(80px, 26vh, 120px); --track-h: clamp(48px, 15vh, 66px); }
   .bar { margin-bottom: 14px; }
   .marks { bottom: -24px; }
   .tagline { display: none; }
@@ -415,7 +410,7 @@ button:focus-visible { outline: 2px solid var(--fg); outline-offset: 4px; }
 }
 /* large desktop screens */
 @media (min-width: 1200px) and (min-height: 820px) {
-  :root { --track-h: 92px; --btn-size: 200px; }
+  :root { --track-h: 104px; --btn-size: 200px; }
   .bar { width: min(900px, 100%); }
 }
 

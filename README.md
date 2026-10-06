@@ -5,7 +5,7 @@ A fast timing game for phones, tablets and laptops. A needle sweeps across a bar
 ## How to play
 - 5 chances per game. The green zone always moves, relative to the needle's speed: chance 1 slow (0.25×), chances 2–3 medium (0.375×), chances 4–5 fast (0.5×).
 - **Win** (inside the zone): 50–100 points, more the closer you are to the center. 95+ is a PERFECT.
-- **Near miss** (within 10 units of the zone): 10 points. Three in a row earns a sticker token.
+- **Near miss** (within 10 units of the zone): 10 points.
 - **Miss**: 0 points. Max score is 500. Your best score is saved in this browser.
 
 ## Controls

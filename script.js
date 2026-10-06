@@ -43,14 +43,14 @@
     finalScore: $('finalScore'), rank: $('rank'), newBest: $('newBest'), chips: $('chips'),
     winsStat: $('winsStat'), closeStat: $('closeStat'), closeLabel: $('closeLabel'), bestStat: $('bestStat'),
     againBtn: $('againBtn'), menuBtn: $('menuBtn'),
-    fx: $('fx'), toast: $('toast'),
+    fx: $('fx'),
   };
 
   /* ---------- state ---------- */
   const S = {
     screen: 'title',      // title | game | over
     phase: 'ready',       // ready | running | waiting (between last stop and game over)
-    used: 0, score: 0, history: [], nearStreak: 0,
+    used: 0, score: 0, history: [],
     zone0: 47, zone: 47, zoneSpeed: 0, t0: 0, pos: 0, lockUntil: 0,
     best: Number(store.get(STORE.best, 0)) || 0,
     muted: !!store.get(STORE.muted, false),
@@ -80,7 +80,6 @@
     win()     { [523, 659, 784, 1047].forEach((f, i) => tone(f, i * .08, .2)); },
     near()    { tone(620, 0, .12); tone(560, .12, .22); },
     miss()    { tone(180, 0, .26, 'sawtooth', .07); },
-    token()   { [784, 988, 1175, 1568].forEach((f, i) => tone(f, .3 + i * .07, .18, 'sine')); },
     over()    { [392, 330, 262].forEach((f, i) => tone(f, i * .12, .3, 'triangle', .12)); },
     click()   { tone(880, 0, .04, 'square', .03); },
   };
@@ -206,10 +205,9 @@
 
   function newGame() {
     clearTimers();
-    Object.assign(S, { phase: 'ready', used: 0, score: 0, history: [], nearStreak: 0, pos: 0, lockUntil: performance.now() + 150 });
+    Object.assign(S, { phase: 'ready', used: 0, score: 0, history: [], pos: 0, lockUntil: performance.now() + 150 });
     S.zone0 = S.zone = randomZone();
     S.zoneSpeed = 0;
-    el.toast.hidden = true;
     el.zone.classList.remove('moving', 'hit');
     el.bar.classList.remove('running', 'shake');
     el.score.textContent = '0';
@@ -289,20 +287,16 @@
     // feedback
     const pt = needlePoint();
     if (j.r === 'win') {
-      S.nearStreak = 0;
       el.result.innerHTML = `<b>${j.perfect ? 'PERFECT!' : 'WIN!'}</b><span class="pts">+${j.pts}</span>`;
       restartAnim(el.zone, 'hit');
       burst(pt.x, pt.y, [css('--win'), css('--brass'), css('--fg'), css('--brass-hi')], j.perfect ? 90 : 55, j.perfect ? 1.3 : 1);
       j.perfect ? sfx.perfect() : sfx.win();
       buzz([30, 40, 70]);
     } else if (j.r === 'near') {
-      S.nearStreak++;
       el.result.innerHTML = `<b>SO CLOSE!</b>off by ${f1(j.dist)} <span class="pts">+${j.pts}</span>`;
       burst(pt.x, pt.y, [css('--near')], 14, .6);
       sfx.near(); buzz([50, 40, 50]);
-      if (S.nearStreak >= 3) { S.nearStreak = 0; showToast('Sticker token earned! 3 near misses in a row'); sfx.token(); }
     } else {
-      S.nearStreak = 0;
       el.result.innerHTML = `<b>MISS</b>off by ${f1(j.dist)}`;
       if (!reduceMotion) restartAnim(el.bar, 'shake');
       sfx.miss(); buzz(30);
@@ -362,13 +356,6 @@
         burst(r.width / 2, r.height * .32, [css('--win'), css('--brass'), css('--near'), css('--fg')], 110, 1.4);
       }, 350);
     }
-  }
-
-  function showToast(msg) {
-    el.toast.textContent = msg;
-    el.toast.hidden = false;
-    restartAnim(el.toast, 'show');
-    later(() => { el.toast.hidden = true; }, 2600);
   }
 
   /* ---------- input ---------- */
